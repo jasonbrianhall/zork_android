@@ -46,20 +46,20 @@ jobs:
 
     - name: Build APK
       run: |
-        cd zork
+        cd android/zork
         gradle assemble --info
 
     - name: List Build Directory Contents
       if: always()
       run: |
-        echo "Directory contents:"
-        ls -la
+        echo "Android directory contents:"
+        ls -la android/
         echo "Zork directory contents:"
-        ls -la zork/
+        ls -la android/zork/
         echo "App directory contents:"
-        ls -la zork/app/
+        ls -la android/zork/app/
         echo "Build outputs:"
-        ls -la zork/app/build/outputs/apk/release/ || echo "Release directory not found"
+        ls -la android/zork/app/build/outputs/apk/release/ || echo "Release directory not found"
 
     - name: Create Release
       id: create_release
@@ -79,7 +79,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./zork/app/build/outputs/apk/release/zork.apk
+        asset_path: ./android/zork/app/build/outputs/apk/release/zork.apk
         asset_name: zork-${{ github.run_number }}-android.apk
         asset_content_type: application/vnd.android.package-archive
-
