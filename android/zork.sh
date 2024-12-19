@@ -489,8 +489,9 @@ public class TerminalView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         
-        canvas.drawColor(Color.BLACK);
-        
+        //canvas.drawColor(Color.BLACK);
+        canvas.drawColor(COLOR_SCHEMES[currentColorScheme].backgroundColor);
+
         canvas.save();
         canvas.translate(-scrollX, -scrollY);
         
