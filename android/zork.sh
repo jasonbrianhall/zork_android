@@ -760,13 +760,13 @@ cat > app/src/main/res/values/strings.xml << 'EOL'
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Zork</string>
-    <string name="app_description">Zork is a classic text adventure game where you explore a mysterious castle filled with treasures and dangers. Navigate through rooms, battle monsters, and collect treasures as you try to survive this perilous dungeon crawl in order to collect the Orb of Zot.  Based on the 1980 BASIC game of the same name with creative differences.</string>
-    <string name="developer">Jason Hall</string>
-    <string name="developer_email">jasonbrianhall@gmail.com</string>
-    <string name="website_url">https://github.com/jasonbrianhall/zork</string>
+    <string name="app_description">Zork is a text-based adventure game wherein the player explores the ruins of the Great Underground Empire. The player types text commands for their character to traverse locations, solve puzzles, and collect treasure.</string>
+    <string name="developer">Zork is a text adventure game first released in 1977 by developers Tim Anderson, Marc Blank, Bruce Daniels, and Dave Lebling for the PDP-10 mainframe computer.  Android port by Jason Hall.</string>
+    <string name="developer_email">jasonbrianhall@gmail.com (android version)</string>
+    <string name="website_url">https://github.com/jasonbrianhall/zork_android</string>
     <string name="source_license">MIT License</string>
-    <string name="game_features">Randomly generated 512-room castles, Multiple character races (Human, Elf, Hobbit, Dwarf, Dark Elf), Strategic combat system, Magic spells, Vendor interactions, ASCII map display</string>
-    <string name="original_concept">Joseph R. Power (1980)</string> 
+    <string name="game_features">Zork is a text adventure game first released in 1977 by developers Tim Anderson, Marc Blank, Bruce Daniels, and Dave Lebling for the PDP-10 mainframe computer. The original developers and others, as the company Infocom, expanded and split the game into three titles—Zork I: The Great Underground Empire, Zork II: The Wizard of Frobozz, and Zork III: The Dungeon Master—which were released commercially for a range of personal computers beginning in 1980. In Zork, the player explores the abandoned Great Underground Empire in search of treasure. The player moves between the game's hundreds of locations and interacts with objects by typing commands in natural language that the game interprets. The program acts as a narrator, describing the player's location and the results of the player's commands. It has been described as the most famous piece of interactive fiction.</string>
+    <string name="original_concept">Infocom</string> 
 </resources>
 EOL
 
