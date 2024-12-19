@@ -157,6 +157,27 @@ public class TerminalView extends View {
     private float maxScrollX = 0;
     private float maxScrollY = 0;
 
+    // First, define the ColorScheme inner class
+    private static class ColorScheme {
+        final int textColor;
+        final int backgroundColor;
+
+        ColorScheme(int textColor, int backgroundColor) {
+            this.textColor = textColor;
+            this.backgroundColor = backgroundColor;
+        }
+    }
+
+    private static final ColorScheme[] COLOR_SCHEMES = {
+        new ColorScheme(Color.GREEN, Color.BLACK),      // Classic green on black
+        new ColorScheme(Color.WHITE, Color.BLACK),      // White on black
+        new ColorScheme(Color.BLACK, Color.WHITE),      // Black on white
+        new ColorScheme(Color.CYAN, Color.BLACK),       // Cyan on black
+        new ColorScheme(Color.rgb(255, 165, 0), Color.BLACK), // Orange on black
+        new ColorScheme(Color.rgb(170, 170, 170), Color.rgb(0, 0, 85)), // Grey on navy
+    };
+    private int currentColorScheme = 0;
+
     public TerminalView(Context context) {
         super(context);
         init();
@@ -209,6 +230,12 @@ public class TerminalView extends View {
                 }
                 return false;
             }
+
+            @Override
+            public boolean onDoubleTap(MotionEvent e) {
+                cycleColorScheme();
+                return true;
+            }
         });
         
         scaleDetector = new ScaleGestureDetector(getContext(), new ScaleGestureDetector.SimpleOnScaleGestureListener() {
@@ -229,6 +256,13 @@ public class TerminalView extends View {
             requestFocus();
             showKeyboard();
         });
+    }
+
+    private void cycleColorScheme() {
+        currentColorScheme = (currentColorScheme + 1) % COLOR_SCHEMES.length;
+        ColorScheme scheme = COLOR_SCHEMES[currentColorScheme];
+        textPaint.setColor(scheme.textColor);
+        invalidate();
     }
 
     public void setOutputStream(OutputStream os) {
