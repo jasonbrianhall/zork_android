@@ -494,6 +494,9 @@ public class TerminalView extends View {
         canvas.restore();
     }
 
+// Add at class level
+private StringBuilder inputBuffer = new StringBuilder();
+
 @Override
 public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
     outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT | EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
@@ -504,8 +507,8 @@ public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
             if (outputStream != null) {
                 try {
                     String str = text.toString();
-                    outputStream.write(str.getBytes());
-                    write(str.getBytes());  // Add this to echo input
+                    inputBuffer.append(str);
+                    write(str.getBytes());  // Show the character
                     outputStream.flush();
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -521,20 +524,24 @@ public boolean onKeyDown(int keyCode, KeyEvent event) {
     if (outputStream != null) {
         try {
             if (keyCode == KeyEvent.KEYCODE_ENTER) {
-                outputStream.write('\n');
-                write("\n".getBytes());  // Add this to echo enter
+                write("\n".getBytes());  // Show newline
+                // Send the complete buffered line
+                outputStream.write((inputBuffer.toString() + "\n").getBytes());
+                inputBuffer.setLength(0);  // Clear buffer
                 outputStream.flush();
                 return true;
             } else if (keyCode == KeyEvent.KEYCODE_DEL) {
-                outputStream.write('\b');
-                write("\b".getBytes());  // Add this to echo backspace
+                if (inputBuffer.length() > 0) {
+                    inputBuffer.setLength(inputBuffer.length() - 1);  // Remove last char from buffer
+                    write("\b".getBytes());  // Show backspace effect
+                }
                 outputStream.flush();
                 return true;
             } else {
                 int unicode = event.getUnicodeChar();
                 if (unicode != 0) {
-                    outputStream.write(unicode);
-                    write(new byte[]{(byte)unicode});  // Add this to echo character
+                    inputBuffer.append((char)unicode);  // Add to buffer
+                    write(new byte[]{(byte)unicode});  // Show the character
                     outputStream.flush();
                     return true;
                 }
@@ -545,6 +552,7 @@ public boolean onKeyDown(int keyCode, KeyEvent event) {
     }
     return super.onKeyDown(keyCode, event);
 }
+
 
 }
 EOL
