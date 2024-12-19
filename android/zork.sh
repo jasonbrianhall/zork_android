@@ -493,67 +493,58 @@ public class TerminalView extends View {
         
         canvas.restore();
     }
+
 @Override
-    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-        outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT | EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
-        outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN;
-        return new BaseInputConnection(this, true) {
-            @Override
-            public boolean commitText(CharSequence text, int newCursorPosition) {
-                if (outputStream != null) {
-                    try {
-                        Log.d("TerminalInput", "Text input: " + text.toString());
-                        outputStream.write(text.toString().getBytes());
-                        outputStream.flush();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+    outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT | EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
+    outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN;
+    return new BaseInputConnection(this, true) {
+        @Override
+        public boolean commitText(CharSequence text, int newCursorPosition) {
+            if (outputStream != null) {
+                try {
+                    String str = text.toString();
+                    outputStream.write(str.getBytes());
+                    write(str.getBytes());  // Add this to echo input
+                    outputStream.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                return true;
             }
-        };
-    }
-
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (outputStream != null) {
-            try {
-                if (keyCode == KeyEvent.KEYCODE_ENTER) {
-                    Log.d("TerminalInput", "Key: ENTER");
-                    outputStream.write('\n');
-                    outputStream.flush();
-                    return true;
-                } else if (keyCode == KeyEvent.KEYCODE_DEL) {
-                    Log.d("TerminalInput", "Key: BACKSPACE");
-                    outputStream.write('\b');
-                    outputStream.flush();
-                    return true;
-                } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
-                    Log.d("TerminalInput", "Key: UP ARROW");
-                    outputStream.write(new byte[] {27, '[', 'A'});
-                    outputStream.flush();
-                    return true;
-                } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
-                    Log.d("TerminalInput", "Key: DOWN ARROW");
-                    outputStream.write(new byte[] {27, '[', 'B'});
-                    outputStream.flush();
-                    return true;
-                } else {
-                    int unicode = event.getUnicodeChar();
-                    if (unicode != 0) {
-                        Log.d("TerminalInput", "Key: " + (char)unicode);
-                        outputStream.write(unicode);
-                        outputStream.flush();
-                        return true;
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            return true;
         }
-        return super.onKeyDown(keyCode, event);
-    }
+    };
+}
 
+@Override
+public boolean onKeyDown(int keyCode, KeyEvent event) {
+    if (outputStream != null) {
+        try {
+            if (keyCode == KeyEvent.KEYCODE_ENTER) {
+                outputStream.write('\n');
+                write("\n".getBytes());  // Add this to echo enter
+                outputStream.flush();
+                return true;
+            } else if (keyCode == KeyEvent.KEYCODE_DEL) {
+                outputStream.write('\b');
+                write("\b".getBytes());  // Add this to echo backspace
+                outputStream.flush();
+                return true;
+            } else {
+                int unicode = event.getUnicodeChar();
+                if (unicode != 0) {
+                    outputStream.write(unicode);
+                    write(new byte[]{(byte)unicode});  // Add this to echo character
+                    outputStream.flush();
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    return super.onKeyDown(keyCode, event);
+}
 
 }
 EOL
