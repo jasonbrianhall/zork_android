@@ -119,6 +119,9 @@ for arch in arm64-v8a x86_64; do
         app/src/main/assets/*.c
 done
 
+rm app/src/main/assets/*.c -f
+rm app/src/main/assets/*.h -f
+
 # Create TerminalView.java
 cat > app/src/main/java/org/zork/terminalzorkadventure/TerminalView.java << 'EOL'
 package org.zork.terminalzorkadventure;
