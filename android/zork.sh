@@ -130,6 +130,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Scroller;
 import java.io.IOException;
 import java.io.OutputStream;
+import android.util.Log;
 
 public class TerminalView extends View {
     private Paint textPaint;
@@ -492,8 +493,7 @@ public class TerminalView extends View {
         
         canvas.restore();
     }
-
-    @Override
+@Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
         outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT | EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
         outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN;
@@ -502,6 +502,7 @@ public class TerminalView extends View {
             public boolean commitText(CharSequence text, int newCursorPosition) {
                 if (outputStream != null) {
                     try {
+                        Log.d("TerminalInput", "Text input: " + text.toString());
                         outputStream.write(text.toString().getBytes());
                         outputStream.flush();
                     } catch (IOException e) {
@@ -518,24 +519,29 @@ public class TerminalView extends View {
         if (outputStream != null) {
             try {
                 if (keyCode == KeyEvent.KEYCODE_ENTER) {
+                    Log.d("TerminalInput", "Key: ENTER");
                     outputStream.write('\n');
                     outputStream.flush();
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DEL) {
+                    Log.d("TerminalInput", "Key: BACKSPACE");
                     outputStream.write('\b');
                     outputStream.flush();
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    Log.d("TerminalInput", "Key: UP ARROW");
                     outputStream.write(new byte[] {27, '[', 'A'});
                     outputStream.flush();
                     return true;
                 } else if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    Log.d("TerminalInput", "Key: DOWN ARROW");
                     outputStream.write(new byte[] {27, '[', 'B'});
                     outputStream.flush();
                     return true;
                 } else {
                     int unicode = event.getUnicodeChar();
                     if (unicode != 0) {
+                        Log.d("TerminalInput", "Key: " + (char)unicode);
                         outputStream.write(unicode);
                         outputStream.flush();
                         return true;
@@ -547,6 +553,8 @@ public class TerminalView extends View {
         }
         return super.onKeyDown(keyCode, event);
     }
+
+
 }
 EOL
 
