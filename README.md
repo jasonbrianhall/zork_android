@@ -6,6 +6,7 @@ Ready to explore the Great Underground Empire? This version lets you venture for
 - 💾 MS-DOS/FreeDOS (via DJGPP)
 - 🪟 Windows (via MinGW)
 - 🐧 Unix/Linux systems
+- 🤖 Android
 
 Grab pre-compiled adventures instantly at: https://github.com/jasonbrianhall/zork_djgpp/releases
 
@@ -15,6 +16,8 @@ make all           # Unleash all versions
 make msdos         # Summon DOS version
 make windows       # Conjure Windows version
 make unix          # Manifest Unix version
+
+cd android; ./zork.sh; cd zork; gradle assembleRelease (requires Android SDK, NDK, Java 17, and Gradle v8.5 or newer)
 
 ```
 Welcome to Dungeon.			This version created 11-MAR-91.
