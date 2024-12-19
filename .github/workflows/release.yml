@@ -1,5 +1,10 @@
 name: Build Android APK
 
+# Add permissions block
+permissions:
+  contents: write
+  packages: write
+
 on:
   push:
     branches:
