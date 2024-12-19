@@ -560,8 +560,9 @@ import android.util.Log;
 import android.view.Gravity;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.view.View;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
@@ -611,7 +612,32 @@ public class MainActivity extends Activity {
             terminalView.showKeyboard();
         });
         
+        copyAssetToFiles("dtextc.dat");
         startProcess();
+    }
+    
+    private void copyAssetToFiles(String assetName) {
+        try {
+            InputStream in = getAssets().open(assetName);
+            File outFile = new File(getFilesDir(), assetName);
+            
+            FileOutputStream out = new FileOutputStream(outFile);
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            in.close();
+            out.close();
+            
+            // Make sure the file is readable
+            outFile.setReadable(true, true);
+            Log.d(TAG, "Copied " + assetName + " to " + outFile.getAbsolutePath());
+            
+        } catch (IOException e) {
+            Log.e(TAG, "Failed to copy " + assetName, e);
+            terminalView.write(("Error copying game data: " + e.getMessage() + "\n").getBytes());
+        }
     }
     
     private void startProcess() {
@@ -624,13 +650,14 @@ public class MainActivity extends Activity {
             Log.d(TAG, "Binary path: " + binFile.getAbsolutePath());
             
             ProcessBuilder pb = new ProcessBuilder(binFile.getAbsolutePath());
-            pb.directory(getFilesDir());
+            pb.directory(getFilesDir());  // Set working directory to where we copied dtextc.dat
+            
             pb.environment().put("TERM", "dumb");
             pb.environment().put("HOME", getFilesDir().getAbsolutePath());
             pb.environment().put("TMPDIR", getCacheDir().getAbsolutePath());
             pb.redirectErrorStream(true);
             
-            Log.d(TAG, "Starting process...");
+            Log.d(TAG, "Starting process in " + getFilesDir().getAbsolutePath());
             process = pb.start();
             
             final OutputStream processInput = process.getOutputStream();
