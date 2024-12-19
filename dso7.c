@@ -129,8 +129,8 @@ L100:
     printf(" West  |%c%c .. %c%c| East\n", dgm[3], dgm[3], dgm[4], dgm[4]);
     more_output(NULL);
     printf("       |%c%c %c%c %c%c|\n", dgm[5], dgm[5], dgm[6], dgm[6],
-    fflush(stdout);					dgm[7], dgm[7]);
-
+    					dgm[7], dgm[7]);
+    fflush(stdout);
     if (st == 10) {
 	rspeak_(870);
     }
