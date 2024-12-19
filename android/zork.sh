@@ -28,7 +28,7 @@ fi
 
 
 # Create project structure
-mkdir -p zork/app/src/main/{assets,java/org/zork/terminalwizcastle,res}
+mkdir -p zork/app/src/main/{assets,java/org/zork/terminalzorkadventure,res}
 cd zork
 
 # Create resource directories
@@ -79,7 +79,7 @@ EOL
 # Copy and compile the C program for each architecture
 cp ../../*.c app/src/main/assets/
 cp ../../*.h app/src/main/assets/
-#cp ../*.c app/src/main/assets/
+cp ../../dtextc.dat app/src/main/assets/
 
 for arch in arm64-v8a x86_64; do
     mkdir -p app/src/main/jniLibs/$arch
@@ -104,13 +104,13 @@ for arch in arm64-v8a x86_64; do
         -Wl,--no-undefined \
         -Wl,-z,noexecstack \
         -Wl,--gc-sections \
-        -o app/src/main/jniLibs/$arch/libwizcastle.so \
+        -o app/src/main/jniLibs/$arch/libzorkadventure.so \
         app/src/main/assets/*.c
 done
 
 # Create TerminalView.java
-cat > app/src/main/java/org/zork/terminalwizcastle/TerminalView.java << 'EOL'
-package org.zork.terminalwizcastle;
+cat > app/src/main/java/org/zork/terminalzorkadventure/TerminalView.java << 'EOL'
+package org.zork.terminalzorkadventure;
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -551,8 +551,8 @@ public class TerminalView extends View {
 EOL
 
 # Create MainActivity.java
-cat > app/src/main/java/org/zork/terminalwizcastle/MainActivity.java << 'EOL'
-package org.zork.terminalwizcastle;
+cat > app/src/main/java/org/zork/terminalzorkadventure/MainActivity.java << 'EOL'
+package org.zork.terminalzorkadventure;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -620,7 +620,7 @@ public class MainActivity extends Activity {
             Log.d(TAG, "Using ABI: " + abi);
             
             File nativeLibDir = new File(getApplicationInfo().nativeLibraryDir);
-            File binFile = new File(nativeLibDir, "libwizcastle.so");
+            File binFile = new File(nativeLibDir, "libzorkadventure.so");
             Log.d(TAG, "Binary path: " + binFile.getAbsolutePath());
             
             ProcessBuilder pb = new ProcessBuilder(binFile.getAbsolutePath());
@@ -797,11 +797,11 @@ plugins {
 }
 
 android {
-    namespace 'org.zork.terminalwizcastle'
+    namespace 'org.zork.terminalzorkadventure'
     compileSdkVersion 33
     
     defaultConfig {
-        applicationId "org.zork.terminalwizcastle"
+        applicationId "org.zork.terminalzorkadventure"
         minSdkVersion 21
         targetSdkVersion 33
         versionCode CHANGEME1
