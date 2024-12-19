@@ -17,7 +17,7 @@ make msdos         # Summon DOS version
 make windows       # Conjure Windows version
 make unix          # Manifest Unix version
 
-cd android; ./zork.sh; cd zork; gradle assembleRelease (requires Android SDK, NDK, Java 17, and Gradle v8.5 or newer)
+cd android; ./zork.sh; cd zork; gradle assembleRelease (requires Android SDK, NDK, Java 17, and Gradle v8.5 or newer); a readme.md exists in that folder so RTFM
 
 ```
 Welcome to Dungeon.			This version created 11-MAR-91.
