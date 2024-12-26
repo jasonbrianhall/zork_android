@@ -15,9 +15,16 @@ int main(int argc, char **argv)
 /* 1) INITIALIZE DATA STRUCTURES */
 /* 2) PLAY GAME */
 
-    if (init_()) {
-	game_();
+#ifdef __ANDROID__
+    for (;;) {
+#endif
+
+        if (init_()) {
+	    game_();
+        }
+#ifdef __ANDROID__
     }
+#endif
 /* 						!IF INIT, PLAY GAME. */
     return 0;  //exit_();
 /* 						!DONE */
