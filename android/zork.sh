@@ -22,8 +22,8 @@ fi
 
 # Check for ImageMagick
 if ! command -v gradle &> /dev/null; then
-    echo "Error: Command gradle not found (used to compile the embedded Java)"
-    exit 1
+    echo "Warning: Command gradle not found (used to compile the embedded Java)"
+    echo "Ignoring"
 fi
 
 
