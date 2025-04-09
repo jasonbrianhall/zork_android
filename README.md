@@ -8,10 +8,6 @@ Ready to explore the Great Underground Empire? This version lets you venture for
 - 🐧 Unix/Linux systems
 - 🤖 Android
 
-## WARNING
-
-For Android, you MUST disable predictive keyboard or it won't work.  I don't know how to fix.
-
 ## GETTING THE GAME
 
 Grab pre-compiled adventures instantly at: https://github.com/jasonbrianhall/zork_djgpp/releases
