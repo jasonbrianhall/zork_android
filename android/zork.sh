@@ -131,6 +131,9 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Typeface;
+import android.text.Editable;
+import android.text.InputType;
+import android.text.TextWatcher;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.KeyEvent;
@@ -147,6 +150,7 @@ import java.io.OutputStream;
 import android.util.Log;
 
 public class TerminalView extends View {
+    private static final String TAG = "TerminalView";
     private Paint textPaint;
     private float charWidth;
     private float charHeight;
@@ -170,6 +174,11 @@ public class TerminalView extends View {
     private float scrollY = 0;
     private float maxScrollX = 0;
     private float maxScrollY = 0;
+    
+    // Add state for current input line
+    private StringBuilder currentLine = new StringBuilder();
+    private int inputStartX = 0;
+    private int inputStartY = 0;
 
     // First, define the ColorScheme inner class
     private static class ColorScheme {
@@ -248,6 +257,12 @@ public class TerminalView extends View {
             @Override
             public boolean onDoubleTap(MotionEvent e) {
                 cycleColorScheme();
+                return true;
+            }
+            
+            @Override
+            public boolean onSingleTapConfirmed(MotionEvent e) {
+                showKeyboard();
                 return true;
             }
         });
@@ -503,7 +518,6 @@ public class TerminalView extends View {
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
         
-        //canvas.drawColor(Color.BLACK);
         canvas.drawColor(COLOR_SCHEMES[currentColorScheme].backgroundColor);
 
         canvas.save();
@@ -529,7 +543,7 @@ public class TerminalView extends View {
             cursorX >= startCol && cursorX < endCol &&
             cursorY >= startRow && cursorY < endRow) {
             Paint cursorPaint = new Paint();
-            cursorPaint.setColor(Color.GREEN);
+            cursorPaint.setColor(COLOR_SCHEMES[currentColorScheme].textColor);
             cursorPaint.setAlpha(160);
             canvas.drawRect(
                 cursorX * charWidth,
@@ -543,66 +557,188 @@ public class TerminalView extends View {
         canvas.restore();
     }
 
-// Add at class level
-private StringBuilder inputBuffer = new StringBuilder();
-
-@Override
-public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-    outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT | EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS;
-    outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_FULLSCREEN;
-    return new BaseInputConnection(this, true) {
-        @Override
-        public boolean commitText(CharSequence text, int newCursorPosition) {
-            if (outputStream != null) {
-                try {
-                    String str = text.toString();
-                    inputBuffer.append(str);
-                    write(str.getBytes());  // Show the character
-                    outputStream.flush();
-                } catch (IOException e) {
-                    e.printStackTrace();
+    // This is where the magic happens for predictive text
+    @Override
+    public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        Log.d(TAG, "Creating input connection");
+        
+        outAttrs.inputType = InputType.TYPE_CLASS_TEXT | 
+                             InputType.TYPE_TEXT_FLAG_AUTO_CORRECT |
+                             InputType.TYPE_TEXT_FLAG_AUTO_COMPLETE |
+                             InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD;  // Ensures we can see what we type
+        
+        outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI | 
+                              EditorInfo.IME_ACTION_SEND |
+                              EditorInfo.IME_FLAG_NO_FULLSCREEN;
+        
+        return new BaseInputConnection(this, true) {
+            private StringBuilder composingText = new StringBuilder();
+            
+            @Override
+            public boolean commitText(CharSequence text, int newCursorPosition) {
+                Log.d(TAG, "Committing text: " + text);
+                
+                // Handle the text that the keyboard is committing
+                String committedText = text.toString();
+                
+                if (outputStream != null) {
+                    try {
+                        // Display the text on screen
+                        write(committedText.getBytes());
+                        
+                        // Add to current line
+                        currentLine.append(committedText);
+                        
+                        return true;
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error committing text", e);
+                    }
+                }
+                return false;
+            }
+            
+            @Override
+            public boolean setComposingText(CharSequence text, int newCursorPosition) {
+                Log.d(TAG, "Setting composing text: " + text);
+                
+                // This handles the composing text (predictive suggestions)
+                if (outputStream != null) {
+                    try {
+                        // If we have previous composing text, erase it first
+                        int oldLength = composingText.length();
+                        if (oldLength > 0) {
+                            // Erase the previous composing text
+                            for (int i = 0; i < oldLength; i++) {
+                                handleBackspace();
+                            }
+                        }
+                        
+                        // Now write the new composing text
+                        String newText = text.toString();
+                        if (!newText.isEmpty()) {
+                            write(newText.getBytes());
+                            composingText.setLength(0);
+                            composingText.append(newText);
+                        }
+                        
+                        return true;
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error setting composing text", e);
+                    }
+                }
+                return false;
+            }
+            
+            @Override
+            public boolean deleteSurroundingText(int beforeLength, int afterLength) {
+                Log.d(TAG, "Delete surrounding text: before=" + beforeLength + ", after=" + afterLength);
+                
+                // Handle backspace/delete
+                if (outputStream != null) {
+                    try {
+                        for (int i = 0; i < beforeLength; i++) {
+                            handleBackspace();
+                        }
+                        return true;
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error deleting text", e);
+                    }
+                }
+                return false;
+            }
+            
+            private void handleBackspace() throws IOException {
+                if (currentLine.length() > 0) {
+                    currentLine.deleteCharAt(currentLine.length() - 1);
+                    
+                    // Send backspace to display
+                    write(new byte[] { '\b' });
+                    
+                    // Clear composing text if any
+                    if (composingText.length() > 0) {
+                        composingText.setLength(0);
+                    }
                 }
             }
-            return true;
-        }
-    };
-}
-
-@Override
-public boolean onKeyDown(int keyCode, KeyEvent event) {
-    if (outputStream != null) {
-        try {
-            if (keyCode == KeyEvent.KEYCODE_ENTER) {
-                write("\n".getBytes());  // Show newline
-                // Send the complete buffered line
-                outputStream.write((inputBuffer.toString() + "\n").getBytes());
-                inputBuffer.setLength(0);  // Clear buffer
-                outputStream.flush();
-                return true;
-            } else if (keyCode == KeyEvent.KEYCODE_DEL) {
-                if (inputBuffer.length() > 0) {
-                    inputBuffer.setLength(inputBuffer.length() - 1);  // Remove last char from buffer
-                    write("\b".getBytes());  // Show backspace effect
+            
+            @Override
+            public boolean sendKeyEvent(KeyEvent event) {
+                Log.d(TAG, "Sending key event: " + event);
+                
+                if (outputStream != null) {
+                    try {
+                        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                            int keyCode = event.getKeyCode();
+                            
+                            if (keyCode == KeyEvent.KEYCODE_ENTER) {
+                                // Clear any composing text
+                                composingText.setLength(0);
+                                
+                                // Send a newline to display
+                                write(new byte[] { '\n' });
+                                
+                                // Send the complete line to the game
+                                String lineToSend = currentLine.toString() + "\n";
+                                outputStream.write(lineToSend.getBytes());
+                                outputStream.flush();
+                                
+                                // Reset the current line
+                                currentLine.setLength(0);
+                                
+                                return true;
+                            } else if (keyCode == KeyEvent.KEYCODE_DEL) {
+                                handleBackspace();
+                                return true;
+                            }
+                        }
+                    } catch (IOException e) {
+                        Log.e(TAG, "Error sending key event", e);
+                    }
                 }
-                outputStream.flush();
-                return true;
-            } else {
-                int unicode = event.getUnicodeChar();
-                if (unicode != 0) {
-                    inputBuffer.append((char)unicode);  // Add to buffer
-                    write(new byte[]{(byte)unicode});  // Show the character
-                    outputStream.flush();
-                    return true;
-                }
+                return super.sendKeyEvent(event);
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        };
     }
-    return super.onKeyDown(keyCode, event);
-}
 
-
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        Log.d(TAG, "onKeyDown: " + keyCode);
+        
+        if (outputStream != null) {
+            try {
+                if (keyCode == KeyEvent.KEYCODE_ENTER) {
+                    write("\n".getBytes());  // Show newline
+                    
+                    // Send the complete line to the game
+                    outputStream.write((currentLine.toString() + "\n").getBytes());
+                    outputStream.flush();
+                    
+                    // Reset current line
+                    currentLine.setLength(0);
+                    return true;
+                } else if (keyCode == KeyEvent.KEYCODE_DEL) {
+                    if (currentLine.length() > 0) {
+                        currentLine.deleteCharAt(currentLine.length() - 1);
+                        write("\b".getBytes());  // Show backspace effect
+                        outputStream.flush();
+                    }
+                    return true;
+                } else {
+                    int unicode = event.getUnicodeChar();
+                    if (unicode != 0) {
+                        String charStr = String.valueOf((char)unicode);
+                        currentLine.append(charStr);
+                        write(charStr.getBytes());
+                        outputStream.flush();
+                        return true;
+                    }
+                }
+            } catch (IOException e) {
+                Log.e(TAG, "Error in onKeyDown", e);
+            }
+        }
+        return super.onKeyDown(keyCode, event);
+    }
 }
 EOL
 

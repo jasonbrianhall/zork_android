@@ -8,7 +8,9 @@ permissions:
 on:
   push:
     branches:
-      - main  # or your default branch name
+      - main  # Public release
+      - dev   # Private test release
+
 jobs:
   build-android:
     runs-on: ubuntu-latest
@@ -63,16 +65,37 @@ jobs:
         echo "Build outputs:"
         ls -la android/zork/app/build/outputs/apk/release/ || echo "Release directory not found"
 
+    - name: Set Version Suffix and Release Flags
+      id: release_flags
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          echo "version_suffix=" >> $GITHUB_OUTPUT
+          echo "is_draft=false" >> $GITHUB_OUTPUT
+          echo "is_prerelease=false" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
+          echo "version_suffix=-dev" >> $GITHUB_OUTPUT
+          echo "is_draft=true" >> $GITHUB_OUTPUT
+          echo "is_prerelease=true" >> $GITHUB_OUTPUT
+        fi
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v${{ github.run_number }}
-        release_name: Release ${{ github.run_number }}
-        draft: false
-        prerelease: false
+        tag_name: v${{ github.run_number }}${{ steps.release_flags.outputs.version_suffix }}
+        release_name: Release ${{ github.run_number }}${{ steps.release_flags.outputs.version_suffix }}
+        draft: ${{ steps.release_flags.outputs.is_draft }}
+        prerelease: ${{ steps.release_flags.outputs.is_prerelease }}
+        body: |
+          ${{ github.ref == 'refs/heads/dev' && '⚠️ DEVELOPMENT BUILD - FOR TESTING ONLY ⚠️' || 'Stable release' }}
+          
+          Build from ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+          
+          Changes in this release:
+          ${{ github.event.head_commit.message }}
 
     - name: Upload Android APK
       uses: actions/upload-release-asset@v1
@@ -82,5 +105,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: ./android/zork/app/build/outputs/apk/release/zork.apk
-        asset_name: zork-android.apk
+        asset_name: zork-android${{ steps.release_flags.outputs.version_suffix }}.apk
         asset_content_type: application/vnd.android.package-archive
