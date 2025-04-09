@@ -611,6 +611,7 @@ cat > app/src/main/java/org/zork/terminalzorkadventure/MainActivity.java << 'EOL
 package org.zork.terminalzorkadventure;
 
 import android.app.Activity;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -627,10 +628,18 @@ public class MainActivity extends Activity {
     private TerminalView terminalView;
     private Process process;
     private Thread outputThread;
+    private boolean gameInitialized = false;
+    private SharedPreferences preferences;
+    private static final String PREFS_NAME = "ZorkPreferences";
+    private static final String KEY_GAME_INITIALIZED = "gameInitialized";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        // Initialize shared preferences
+        preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        gameInitialized = preferences.getBoolean(KEY_GAME_INITIALIZED, false);
         
         // Create main layout
         FrameLayout layout = new FrameLayout(this);
@@ -669,27 +678,35 @@ public class MainActivity extends Activity {
         });
         
         copyAssetToFiles("dtextc.dat");
-        startProcess();
+        
+        if (savedInstanceState == null) {
+            // Only start the process when the activity is first created
+            startProcess();
+        }
     }
     
     private void copyAssetToFiles(String assetName) {
         try {
-            InputStream in = getAssets().open(assetName);
             File outFile = new File(getFilesDir(), assetName);
             
-            FileOutputStream out = new FileOutputStream(outFile);
-            byte[] buffer = new byte[4096];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
+            // Only copy if the file doesn't exist yet
+            if (!outFile.exists()) {
+                InputStream in = getAssets().open(assetName);
+                FileOutputStream out = new FileOutputStream(outFile);
+                byte[] buffer = new byte[4096];
+                int read;
+                while ((read = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, read);
+                }
+                in.close();
+                out.close();
+                
+                // Make sure the file is readable
+                outFile.setReadable(true, true);
+                Log.d(TAG, "Copied " + assetName + " to " + outFile.getAbsolutePath());
+            } else {
+                Log.d(TAG, assetName + " already exists, skipping copy");
             }
-            in.close();
-            out.close();
-            
-            // Make sure the file is readable
-            outFile.setReadable(true, true);
-            Log.d(TAG, "Copied " + assetName + " to " + outFile.getAbsolutePath());
-            
         } catch (IOException e) {
             Log.e(TAG, "Failed to copy " + assetName, e);
             terminalView.write(("Error copying game data: " + e.getMessage() + "\n").getBytes());
@@ -697,6 +714,11 @@ public class MainActivity extends Activity {
     }
     
     private void startProcess() {
+        if (process != null) {
+            Log.d(TAG, "Process already running, not starting a new one");
+            return;
+        }
+        
         try {
             String abi = getabi();
             Log.d(TAG, "Using ABI: " + abi);
@@ -716,6 +738,10 @@ public class MainActivity extends Activity {
             Log.d(TAG, "Starting process in " + getFilesDir().getAbsolutePath());
             process = pb.start();
             
+            // Mark that the game has been initialized
+            gameInitialized = true;
+            saveGameState();
+            
             final OutputStream processInput = process.getOutputStream();
             final InputStream processOutput = process.getInputStream();
             
@@ -724,7 +750,7 @@ public class MainActivity extends Activity {
             outputThread = new Thread(() -> {
                 byte[] buffer = new byte[4096];
                 try {
-                    while (true) {
+                    while (!Thread.currentThread().isInterrupted()) {
                         int available = processOutput.available();
                         if (available > 0) {
                             int read = processOutput.read(buffer, 0, Math.min(available, buffer.length));
@@ -741,12 +767,16 @@ public class MainActivity extends Activity {
                                 ("\nProcess exited with code " + exitCode + "\n").getBytes()));
                             break;
                         } catch (IllegalThreadStateException e) {
+                            // Process is still running, continue
                         }
                         
                         Thread.sleep(10);
                     }
+                } catch (InterruptedException e) {
+                    Log.d(TAG, "Output thread interrupted");
                 } catch (Exception e) {
                     final String error = "Error reading output: " + e.getMessage() + "\n";
+                    Log.e(TAG, error, e);
                     runOnUiThread(() -> terminalView.write(error.getBytes()));
                 }
             });
@@ -774,14 +804,76 @@ public class MainActivity extends Activity {
         return "x86_64";
     }
     
+    private void saveGameState() {
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putBoolean(KEY_GAME_INITIALIZED, gameInitialized);
+        editor.apply();
+    }
+    
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putBoolean("gameInitialized", gameInitialized);
+        Log.d(TAG, "onSaveInstanceState: Saving game state");
+    }
+    
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        if (savedInstanceState != null) {
+            gameInitialized = savedInstanceState.getBoolean("gameInitialized", false);
+            Log.d(TAG, "onRestoreInstanceState: Restoring game state, gameInitialized=" + gameInitialized);
+            
+            // If the process was killed but we were initialized before, restart it
+            if (gameInitialized && process == null) {
+                startProcess();
+            }
+        }
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume called");
+        
+        // If the process died but we were initialized before, restart it
+        if (gameInitialized && (process == null || !isProcessAlive())) {
+            Log.d(TAG, "Process is null or dead, restarting");
+            startProcess();
+        }
+    }
+    
+    private boolean isProcessAlive() {
+        if (process == null) return false;
+        try {
+            process.exitValue();
+            return false; // If we get here, the process has exited
+        } catch (IllegalThreadStateException e) {
+            return true; // Process is still running
+        }
+    }
+    
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause called");
+        // We intentionally don't kill the process here to keep it running
+        saveGameState();
+    }
+    
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        Log.d(TAG, "onDestroy called");
         if (process != null) {
+            Log.d(TAG, "Destroying process");
             process.destroy();
+            process = null;
         }
         if (outputThread != null) {
+            Log.d(TAG, "Interrupting output thread");
             outputThread.interrupt();
+            outputThread = null;
         }
     }
 }
@@ -860,7 +952,7 @@ cat > app/src/main/AndroidManifest.xml << 'EOL'
             android:name="developer"
             android:value="@string/developer" />
 
-	<meta-data
+        <meta-data
             android:name="developer_email"
             android:value="@string/developer_email" />
             
@@ -872,7 +964,7 @@ cat > app/src/main/AndroidManifest.xml << 'EOL'
             android:name="game_description"
             android:value="@string/app_description" />
 
-	<meta-data
+        <meta-data
             android:name="source_license"
             android:value="@string/source_license" />
 
@@ -884,10 +976,10 @@ cat > app/src/main/AndroidManifest.xml << 'EOL'
             android:name="original_concept"
             android:value="@string/original_concept" />
 
-
         <activity 
             android:name=".MainActivity" 
             android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
             android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
@@ -929,6 +1021,16 @@ android {
             outputFileName = "zork.apk"
         }
     }
+    
+    // Prevent game state from being lost when Activity is recreated
+    aaptOptions {
+        noCompress 'dat'
+    }
+}
+
+// Make sure we can keep the process alive
+tasks.withType(JavaCompile) {
+    options.compilerArgs << "-Xlint:deprecation"
 }
 EOL
 
