@@ -9,7 +9,6 @@ on:
   push:
     branches:
       - main  # or your default branch name
-      - dev
 jobs:
   build-android:
     runs-on: ubuntu-latest
